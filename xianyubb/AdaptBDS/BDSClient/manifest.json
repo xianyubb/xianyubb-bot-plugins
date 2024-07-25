@@ -1,0 +1,10 @@
+{
+    "type": "lse-quickjs",
+    "name": "BDSClient",
+    "entry": "BDSClient.js",
+    "dependencies": [
+        {
+            "name": "legacy-script-engine-quickjs"
+        }
+    ]
+}
