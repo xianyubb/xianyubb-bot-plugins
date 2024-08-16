@@ -1,22 +1,53 @@
 // LiteLoader-AIDS automatic generated
 /// <reference path="d:\Dev\Xianyubb-Dev/dts/helperlib/src/index.d.ts"/>
+
+
+
 const CONFIG = new JsonConfigFile("./plugins/BDSClient/config.json");
 const WS_URL = CONFIG.init("ws_url", "ws://localhost:8081");
 const WS = new WSClient();
+
 function generateUUIDv4() {
     // 生成随机的 128 位数字
     const randomPart = ([...Array(32)].map(() => Math.floor(Math.random() * 16).toString(16)).join('') + '00000000').slice(0, 32);
+
     // 将随机生成的数字按照 UUID 的格式进行格式化
     const uuid = randomPart.substring(0, 8) +
         '-' + randomPart.substring(8, 12) +
         '-' + randomPart.substring(12, 16) +
         '-' + randomPart.substring(16, 20) +
         '-' + randomPart.substring(20, 32);
+
     return uuid;
 }
-const UUID = CONFIG.init("uuid", generateUUIDv4());
+
+const UUID: string = CONFIG.init("uuid", generateUUIDv4());
+
+interface MessageType {
+    type: "Chat" | "Group";
+    msg: {};
+}
+
+interface ChatMessage extends MessageType {
+    type: "Chat";
+    msg: {
+        "player_name": string;
+        "message": string;
+    };
+}
+
+interface GroupMessage extends MessageType {
+    type: "Group";
+    msg: {
+        "sender_name": string;
+        "user_id": number,
+        "message": string;
+        "group_id": number,
+    };
+}
+
 mc.listen("onServerStarted", () => {
-    WS.connectAsync(WS_URL, (success) => {
+    WS.connectAsync(WS_URL, (success: boolean) => {
         if (!success) {
             logger.warn("WS服务器连接失败, 将尝试重连!!!");
             let times = 0;
@@ -30,7 +61,7 @@ mc.listen("onServerStarted", () => {
                         logger.warn(`重连失败, 重连第 ${++times} 次`);
                     }
                 });
-            }, 3000); // 10 秒后重连
+            }, 3000); // 3 秒后重连
         }
         else {
             logger.info("WS服务器连接成功!");
@@ -45,19 +76,22 @@ mc.listen("onServerStarted", () => {
                 uuid: UUID,
             }));
         }
+
         // 接收来自WS服务器的事件
-        WS.listen("onTextReceived", (msg) => {
+        WS.listen("onTextReceived", (msg: string) => {
             logger.info(msg);
-            const message = JSON.parse(msg);
+            const message: MessageType = JSON.parse(msg);
             if (message.type === "Group") {
-                const Group = message;
+                const Group = message as GroupMessage;
                 mc.broadcast(`[${Group.msg.sender_name}] ${Group.msg.message}`);
             }
         });
     });
 });
+
+
 mc.listen("onChat", (player, msg) => {
-    const chatMessage = {
+    const chatMessage: ChatMessage = {
         type: "Chat",
         msg: {
             player_name: player.realName,
@@ -66,6 +100,7 @@ mc.listen("onChat", (player, msg) => {
     };
     WS.send(JSON.stringify(chatMessage));
 });
+
 WS.listen("onLostConnection", (code) => {
     logger.warn(`WebSocket 已断开, 状态码: ${code}`);
     // 重连
@@ -73,12 +108,12 @@ WS.listen("onLostConnection", (code) => {
     const int = setInterval(() => {
         WS.connectAsync(WS_URL, (success) => {
             if (success) {
-                logger.info("重连成功!");
                 clearInterval(int);
+                logger.info("重连成功!");
             }
             else {
                 logger.warn(`重连失败, 重连第 ${++times} 次`);
             }
         });
-    }, 3000); // 10 秒后重连
+    }, 3000); // 3 秒后重连
 });
